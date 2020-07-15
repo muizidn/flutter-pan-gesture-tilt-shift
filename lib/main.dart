@@ -19,9 +19,11 @@ class MainScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[200],
-      body: PanGesturing(
-        width: 200,
-        height: 200,
+      body: Center(
+        child: PanGesturing(
+          width: 640 / 2 - 50,
+          height: 1136 / 2 - 50,
+        ),
       ),
     );
   }

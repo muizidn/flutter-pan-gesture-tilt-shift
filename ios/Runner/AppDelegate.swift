@@ -1,13 +1,157 @@
 import UIKit
 import Flutter
+import GPUImage
 
 @UIApplicationMain
 @objc class AppDelegate: FlutterAppDelegate {
-  override func application(
-    _ application: UIApplication,
-    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
-  ) -> Bool {
-    GeneratedPluginRegistrant.register(with: self)
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
-  }
+    override func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
+        GeneratedPluginRegistrant.register(with: self)
+        
+        let controller : FlutterViewController = window?.rootViewController as! FlutterViewController
+        let imageProcessingChannel = FlutterMethodChannel(name: "flutter_native_image",
+                                                          binaryMessenger: controller.binaryMessenger)
+        imageProcessingChannel.setMethodCallHandler({
+            [weak self] (call: FlutterMethodCall, result: @escaping FlutterResult) -> Void in
+            // Note: this method is invoked on the UI thread.
+            if(call.method == "adjustImage") {
+                result(self?.adjustImage(call))
+            }
+            
+            
+            
+            /*else{
+             result(FlutterMethodNotImplemented)
+             return
+             }*/
+        })
+        return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    }
+    
+    private func adjustImage(_ call: FlutterMethodCall) -> String {
+        
+        guard let args = call.arguments else {
+            print("iOS could not recognize flutter arguments in method: (sendParams)")
+            fatalError()
+        }
+        
+        print("#=>args", args)
+        
+        guard let myArgs = args as? [String: Any],
+            let fileName = myArgs["file_name"] as? String,
+            let tiltX = myArgs["tiltX"] as? Double,
+            let tiltY = myArgs["tiltY"] as? Double,
+            let tiltRadius = myArgs["tiltRadius"] as? Double else {
+                fatalError()
+        }
+        
+        /*
+         It seems there's an issue with above CIFilter so,
+         to show that TiltShift works, we need to omit the usage for a while
+         */
+        
+        guard var newImg = UIImage(named: fileName) else {
+            fatalError()
+        }
+        
+        // This function resposible to map given x,y coordinate
+        // because of issue 90 degree rotation. Please see https://roszkowski.dev/2020/rotate-image-from-camera-in-flutter/
+        func calculatePoint(x: CGFloat, y: CGFloat) -> CGPoint {
+            return CGPoint(
+                x: y,
+                y: 1.0 - x
+            )
+        }
+        
+        newImg = applyFilterTiltShift(
+            image: newImg,
+            excludeCircleRadius: 0.3, // unblurred area
+            blurRadiusInPixels: 0.73, // blur
+            excludeCirclePoint: CGPoint(
+                x: CGFloat(tiltX) / newImg.size.width,
+                y: CGFloat(tiltY) / newImg.size.height
+            )
+        )
+        
+        guard let data = newImg.jpegData(compressionQuality: 1.0) else {
+            fatalError()
+        }
+        
+        let dirPath = getDocumentsDirectory()
+        let imageFileUrl = dirPath.appendingPathComponent("_adjustedImage.jpg")
+        do {
+            try data.write(to: imageFileUrl)
+            print("Successfully saved image at path: \(imageFileUrl.path)")
+            return(imageFileUrl.path)
+        } catch {
+            print("Error saving image: \(error)")
+            fatalError()
+        }
+        
+        
+    }
+    
+    private func applyBrigtness(image: UIImage, brightness: CGFloat) -> UIImage {
+        guard let imgPict = GPUImagePicture(image: image) else { fatalError() }
+        
+        let filter = GPUImageBrightnessFilter()
+        filter.brightness = brightness
+        
+        imgPict.addTarget(filter)
+        filter.useNextFrameForImageCapture()
+        imgPict.processImage()
+        return filter.imageFromCurrentFramebuffer(with: image.imageOrientation)
+    }
+    
+    private func applyContrast(image: UIImage, contrast: CGFloat) -> UIImage {
+        guard let imgPict = GPUImagePicture(image: image) else { fatalError() }
+        
+        let filter = GPUImageContrastFilter()
+        filter.contrast = contrast
+        
+        imgPict.addTarget(filter)
+        filter.useNextFrameForImageCapture()
+        imgPict.processImage()
+        return filter.imageFromCurrentFramebuffer(with: image.imageOrientation)
+    }
+    
+    private func applySaturation(image: UIImage, saturation: CGFloat) -> UIImage {
+        guard let imgPict = GPUImagePicture(image: image) else { fatalError() }
+        
+        let filter = GPUImageSaturationFilter()
+        filter.saturation = saturation
+        
+        imgPict.addTarget(filter)
+        filter.useNextFrameForImageCapture()
+        imgPict.processImage()
+        return filter.imageFromCurrentFramebuffer(with: image.imageOrientation)
+    }
+    
+    private func applyFilterTiltShift(image: UIImage,
+                                      excludeCircleRadius: Float? = nil,
+                                      excludeBlurSize: Float? = nil,
+                                      blurRadiusInPixels: CGFloat? = nil,
+                                      aspectRatio: Float? = nil,
+                                      excludeCirclePoint: CGPoint? = nil) -> UIImage {
+        let imgPict = GPUImagePicture(image: image)!
+        
+        let filter = TaliooTiltShiftRadialFilter()
+        filter.excludeCircleRadius = excludeCircleRadius ?? filter.excludeCircleRadius
+        filter.excludeBlurSize = excludeBlurSize ?? filter.excludeBlurSize
+        filter.blurRadiusInPixels = blurRadiusInPixels ?? filter.blurRadiusInPixels
+        filter.aspectRatio = aspectRatio ?? filter.aspectRatio
+        filter.excludeCirclePoint = excludeCirclePoint ?? filter.excludeCirclePoint
+        
+        imgPict.addTarget(filter)
+        filter.useNextFrameForImageCapture()
+        imgPict.processImage()
+        return filter.imageFromCurrentFramebuffer(with: image.imageOrientation)
+    }
+    
+    func getDocumentsDirectory() -> URL {
+        let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+        return paths[0]
+    }
 }
