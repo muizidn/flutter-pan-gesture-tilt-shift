@@ -56,6 +56,8 @@ import GPUImage
             fatalError()
         }
         
+        newImg = newImg.byFixingOrientation()
+        
         // This function resposible to map given x,y coordinate
         // because of issue 90 degree rotation. Please see https://roszkowski.dev/2020/rotate-image-from-camera-in-flutter/
         func calculatePoint(x: CGFloat, y: CGFloat) -> CGPoint {
@@ -70,8 +72,8 @@ import GPUImage
             excludeCircleRadius: 0.3, // unblurred area
             blurRadiusInPixels: 0.73, // blur
             excludeCirclePoint: CGPoint(
-                x: CGFloat(tiltX) / newImg.size.width,
-                y: CGFloat(tiltY) / newImg.size.height
+                x: CGFloat(tiltX) * UIScreen.main.scale / newImg.size.width,
+                y: CGFloat(tiltY) * UIScreen.main.scale / newImg.size.height
             )
         )
         
@@ -80,7 +82,9 @@ import GPUImage
         }
         
         let dirPath = getDocumentsDirectory()
-        let imageFileUrl = dirPath.appendingPathComponent("_adjustedImage.jpg")
+        let imageFileUrl = dirPath.appendingPathComponent(
+            "imgs/_adjustedImage-\(UUID()).jpg"
+        )
         do {
             try data.write(to: imageFileUrl)
             print("Successfully saved image at path: \(imageFileUrl.path)")
@@ -153,5 +157,61 @@ import GPUImage
     func getDocumentsDirectory() -> URL {
         let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
         return paths[0]
+    }
+}
+
+extension UIImage {
+
+    func byFixingOrientation(andResizingImageToNewSize newSize: CGSize? = nil) -> UIImage {
+
+        guard let cgImage = self.cgImage else { return self }
+
+        let orientation = self.imageOrientation
+        guard orientation != .up else { return UIImage(cgImage: cgImage, scale: 1, orientation: .up) }
+
+        var transform = CGAffineTransform.identity
+        let size = newSize ?? self.size
+
+        if (orientation == .down || orientation == .downMirrored) {
+            transform = transform.translatedBy(x: size.width, y: size.height)
+            transform = transform.rotated(by: .pi)
+        }
+        else if (orientation == .left || orientation == .leftMirrored) {
+            transform = transform.translatedBy(x: size.width, y: 0)
+            transform = transform.rotated(by: CGFloat.pi / 2)
+        }
+        else if (orientation == .right || orientation == .rightMirrored) {
+            transform = transform.translatedBy(x: 0, y: size.height)
+            transform = transform.rotated(by: -(CGFloat.pi / 2))
+        }
+
+        if (orientation == .upMirrored || orientation == .downMirrored) {
+            transform = transform.translatedBy(x: size.width, y: 0);
+            transform = transform.scaledBy(x: -1, y: 1)
+        }
+        else if (orientation == .leftMirrored || orientation == .rightMirrored) {
+            transform = transform.translatedBy(x: size.height, y: 0)
+            transform = transform.scaledBy(x: -1, y: 1)
+        }
+
+        // Now we draw the underlying CGImage into a new context, applying the transform calculated above.
+        guard let ctx = CGContext(data: nil, width: Int(size.width), height: Int(size.height),
+                                  bitsPerComponent: cgImage.bitsPerComponent, bytesPerRow: 0,
+                                  space: cgImage.colorSpace!, bitmapInfo: cgImage.bitmapInfo.rawValue)
+        else {
+            return UIImage(cgImage: cgImage, scale: 1, orientation: orientation)
+        }
+
+        ctx.concatenate(transform)
+
+        // Create a new UIImage from the drawing context
+        switch (orientation) {
+        case .left, .leftMirrored, .right, .rightMirrored:
+            ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: size.height, height: size.width))
+        default:
+            ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: size.width, height: size.height))
+        }
+
+        return UIImage(cgImage: ctx.makeImage() ?? cgImage, scale: 1, orientation: .up)
     }
 }
