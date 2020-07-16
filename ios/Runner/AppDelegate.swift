@@ -58,22 +58,13 @@ import GPUImage
         
         newImg = newImg.byFixingOrientation()
         
-        // This function resposible to map given x,y coordinate
-        // because of issue 90 degree rotation. Please see https://roszkowski.dev/2020/rotate-image-from-camera-in-flutter/
-        func calculatePoint(x: CGFloat, y: CGFloat) -> CGPoint {
-            return CGPoint(
-                x: y,
-                y: 1.0 - x
-            )
-        }
-        
         newImg = applyFilterTiltShift(
             image: newImg,
             excludeCircleRadius: 0.3, // unblurred area
             blurRadiusInPixels: 0.73, // blur
             excludeCirclePoint: CGPoint(
-                x: CGFloat(tiltX) * UIScreen.main.scale / newImg.size.width,
-                y: CGFloat(tiltY) * UIScreen.main.scale / newImg.size.height
+                x: CGFloat(tiltX),
+                y: CGFloat(tiltY)
             )
         )
         
