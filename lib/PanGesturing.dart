@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:myapp/FlutterNative.dart';
-import 'package:myapp/GesturableImage.dart';
+import 'package:myapp/ImageWithTiltShiftFilter.dart';
 
 class PanGesturing extends StatefulWidget {
   final double width;
@@ -40,7 +40,7 @@ class _PanGesturingState extends State<PanGesturing> {
             width: this.widget.width,
             height: this.widget.height,
             child: Center(
-                child: GesturableImage(
+                child: ImageWithTiltShiftFilter(
               image: snapshot.data,
               location: this._location,
               onLocationChange: (location) {
@@ -58,7 +58,8 @@ class _PanGesturingState extends State<PanGesturing> {
   }
 
   void _adjustImage(double tiltX, double tiltY, double radius) async {
-    File file = await FlutterNative.adjustImage("left", tiltX, tiltY, radius);
+    File file = await FlutterNative.adjustImage(
+        "left", tiltX, tiltY, radius); // and here
     _streamController.sink.add(file);
   }
 }

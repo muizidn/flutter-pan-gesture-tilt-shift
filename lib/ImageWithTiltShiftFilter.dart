@@ -6,12 +6,12 @@ import 'package:rect_getter/rect_getter.dart';
 typedef OnLocationChange = void Function(Offset location);
 typedef OnLocationEnd = void Function(Offset location, Size size);
 
-class GesturableImage extends StatefulWidget {
+class ImageWithTiltShiftFilter extends StatefulWidget {
   final File image;
   final Offset location;
   final OnLocationChange onLocationChange;
   final OnLocationEnd onLocationEnd;
-  const GesturableImage(
+  const ImageWithTiltShiftFilter(
       {Key key,
       this.image,
       this.location,
@@ -23,7 +23,7 @@ class GesturableImage extends StatefulWidget {
   _GesturableImage createState() => _GesturableImage();
 }
 
-class _GesturableImage extends State<GesturableImage> {
+class _GesturableImage extends State<ImageWithTiltShiftFilter> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -81,7 +81,7 @@ class _GesturableImage extends State<GesturableImage> {
       );
     } else {
       w = Image.asset(
-        "images/left.jpg",
+        "images/left.jpg", // change image here
         gaplessPlayback: true,
         fit: BoxFit.contain,
       );
