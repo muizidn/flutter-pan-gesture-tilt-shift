@@ -45,6 +45,10 @@ flutter:
   assets:
     - images/ios_camera.jpg
     - images/taken_by_app.jpg
+    - images/left.jpg
+    - images/up.jpg
+    - images/right.jpg
+    - images/down.jpg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware.

@@ -56,16 +56,96 @@ import GPUImage
             fatalError()
         }
         
-        newImg = newImg.byFixingOrientation()
+//        newImg = newImg.byFixingOrientation()
         
-        newImg = applyFilterTiltShift(
-            image: newImg,
-            excludeCircleRadius: 0.3, // unblurred area
-            blurRadiusInPixels: 0.73, // blur
-            excludeCirclePoint: CGPoint(
-                x: CGFloat(tiltX),
-                y: CGFloat(tiltY)
-            )
+//        newImg = applyFilterTiltShift(
+//            image: newImg,
+//            excludeCircleRadius: 0.3, // unblurred area
+//            blurRadiusInPixels: 0.73, // blur
+//            excludeCirclePoint: CGPoint(
+//                x: CGFloat(tiltX),
+//                y: CGFloat(tiltY)
+//            )
+//        )
+        
+        let originalOrientation = newImg.imageOrientation
+        
+        print("=>ImageOrientation",
+              originalOrientation.string)
+        
+        /* Please read these.
+         Keyword: Exif orientation
+         https://www.impulseadventure.com/photo/exif-orientation.html
+         https://developer.apple.com/documentation/uikit/uiimage/orientation
+         */
+        
+        newImg = {
+            switch newImg.imageOrientation {
+            case .up:
+                return doEffect(
+                    image: UIImage(
+                        cgImage: newImg.cgImage!,
+                        scale: 1,
+                        orientation: .up
+                    ),
+                    point: CGPoint(
+                        x: tiltX,
+                        y: 1.0 - tiltY
+                    )
+                )
+            case .down:
+                return doEffect(
+                    image: UIImage(
+                        cgImage: newImg.cgImage!,
+                        scale: 1,
+                        orientation: .up
+                    ),
+                    point: CGPoint(
+                        x: 1.0 - tiltX,
+                        y: tiltY
+                    )
+                )
+            case .left:
+                return doEffect(
+                    image: UIImage(
+                        cgImage: newImg.cgImage!,
+                        scale: 1,
+                        orientation: .up
+                    ),
+                    point: CGPoint(
+                        x: tiltX,
+                        y: tiltY
+                    )
+                )
+            case .right:
+                return doEffect(
+                    image: UIImage(
+                        cgImage: newImg.cgImage!,
+                        scale: 1,
+                        orientation: .up
+                    ),
+                    point: CGPoint(
+                        x: tiltY,
+                        y: tiltX
+                    )
+                )
+            case .upMirrored:
+                fatalError("unimplemented")
+            case .downMirrored:
+                fatalError("unimplemented")
+            case .leftMirrored:
+                fatalError("unimplemented")
+            case .rightMirrored:
+                fatalError("unimplemented")
+            @unknown default:
+                fatalError("unimplemented")
+            }
+        }()
+        
+        newImg = UIImage(
+            cgImage: newImg.cgImage!,
+            scale: 1,
+            orientation: originalOrientation
         )
         
         guard let data = newImg.jpegData(compressionQuality: 1.0) else {
@@ -149,7 +229,90 @@ import GPUImage
         let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
         return paths[0]
     }
+    
+    private lazy var ciContext = CIContext(options: nil)
+    
+    /// TiltShift Image Effect
+    /// - Parameters:
+    ///   - image: image
+    ///   - point: normalized point (0.0 - 1.0)
+    func doEffect(image: UIImage, point: CGPoint) -> UIImage {
+        guard let ciImageOrig = CIImage(image: image) else { fatalError() }
+        
+        let mPoint = CGPoint(
+            x: image.size.width * point.x,
+            y: image.size.height * point.y
+        )
+        
+        print("Point orig", point, "mLocation", mPoint)
+        
+        let blurEffect = CIFilter(name: "CIGaussianBlur")!
+        blurEffect.setValue(ciImageOrig, forKey: kCIInputImageKey)
+        blurEffect.setValue(500.0, forKey: kCIInputRadiusKey)
+        
+        let radialGradient = CIFilter(name: "CIRadialGradient")!
+        radialGradient.setValue(
+            CIVector(x: mPoint.x, y: mPoint.y),
+            forKey: "inputCenter")
+        radialGradient.setValue(
+            NSNumber(value: 75),
+            forKey: "inputRadius0")
+        radialGradient.setValue(
+            NSNumber(value: 74),
+            forKey: "inputRadius1")
+        
+        let blend = CIFilter(name: "CIBlendWithMask")!
+        blend.setValue(blurEffect.outputImage!,
+                       forKey: kCIInputImageKey)
+        blend.setValue(ciImageOrig,
+                       forKey: kCIInputBackgroundImageKey)
+        blend.setValue(radialGradient.outputImage!,
+                       forKey: kCIInputMaskImageKey)
+        
+        let filteredImageData = blend
+            .value(forKey: kCIOutputImageKey)
+            .flatMap({ $0 as? CIImage })!
+            .cropped(to: ciImageOrig.extent)
+        
+        guard let cgImage = ciContext
+            .createCGImage(filteredImageData, from: filteredImageData.extent)
+            else { fatalError() }
+        
+        let finalImage = UIImage(
+            cgImage: cgImage,
+            scale: image.scale,
+            orientation: image.imageOrientation
+        )
+        
+        return finalImage
+    }
 }
+
+extension UIImage.Orientation {
+    var string: String {
+        switch self {
+        case .up:
+            return "up"
+        case .down:
+            return "down"
+        case .left:
+            return "left"
+        case .right:
+            return "right"
+        case .upMirrored:
+            return "upMirrored"
+        case .downMirrored:
+            return "downMirrored"
+        case .leftMirrored:
+            return "leftMirrored"
+        case .rightMirrored:
+            return "rightMirrored"
+        @unknown default:
+            return "unknown default \(self.rawValue)"
+        }
+    }
+}
+
 
 extension UIImage {
 

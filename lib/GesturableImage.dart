@@ -56,8 +56,13 @@ class _GesturableImage extends State<GesturableImage> {
             top: this.widget.location.dy - (50 / 2),
             left: this.widget.location.dx - (50 / 2),
             child: Container(
-              decoration: BoxDecoration(color: Colors.red),
-            ),
+                decoration: const BoxDecoration(
+                    border: Border(
+              top: BorderSide(width: 1.0, color: Color(0xFFFFDFDFDF)),
+              left: BorderSide(width: 1.0, color: Color(0xFFFFDFDFDF)),
+              right: BorderSide(width: 1.0, color: Color(0xFFFF7F7F7F)),
+              bottom: BorderSide(width: 1.0, color: Color(0xFFFF7F7F7F)),
+            ))),
           )
         ],
       ),
@@ -76,7 +81,7 @@ class _GesturableImage extends State<GesturableImage> {
       );
     } else {
       w = Image.asset(
-        "images/taken_by_app.jpg",
+        "images/left.jpg",
         gaplessPlayback: true,
         fit: BoxFit.contain,
       );

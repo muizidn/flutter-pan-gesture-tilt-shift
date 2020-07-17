@@ -58,8 +58,7 @@ class _PanGesturingState extends State<PanGesturing> {
   }
 
   void _adjustImage(double tiltX, double tiltY, double radius) async {
-    File file =
-        await FlutterNative.adjustImage("taken_by_app", tiltX, tiltY, radius);
+    File file = await FlutterNative.adjustImage("left", tiltX, tiltY, radius);
     _streamController.sink.add(file);
   }
 }
